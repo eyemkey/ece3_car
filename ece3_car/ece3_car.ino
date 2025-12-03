@@ -40,6 +40,8 @@ uint8_t state = 0;
 uint8_t black_count = 0;
 bool isBug = false;
 
+unsigned long startTime = 0;
+unsigned long elapsed = 0;
 
 float normalizedSum = 0;
 float sum = 0;
@@ -49,6 +51,7 @@ uint8_t led_id = 0;
 String buffer = "";
 
 void setup() {
+  startTime = millis();
   ECE3_Init(); 
 
   pinMode(LEFT_NSLP_PIN, OUTPUT);
@@ -74,7 +77,7 @@ void setup() {
 }
 
 void loop() {
-
+  elapsed = millis() - startTime; 
 
   ECE3_read_IR(sensorValues);
   
@@ -95,19 +98,32 @@ void loop() {
   if(!isBug){
     switch(state){
       case 1: 
+        while(abs(getEncoderCount_left()) < 10){
+          analogWrite(LEFT_PWM_PIN, speed); 
+          analogWrite(RIGHT_PWM_PIN, speed); 
+        }
+
+        resetEncoderCount_left();
+        resetEncoderCount_right();
+
         speed = 50;
         digitalWrite(LEFT_DIR_PIN, HIGH);
         while(abs(getEncoderCount_left()) < encoderMax){
           analogWrite(LEFT_PWM_PIN, speed); 
           analogWrite(RIGHT_PWM_PIN, speed);
         }
+        analogWrite(LEFT_PWM_PIN, 0);
+        analogWrite(RIGHT_PWM_PIN, 0); 
         digitalWrite(LEFT_DIR_PIN, LOW); 
         blinkLed();
         state++;
         speed = 20;
         break;
 
-      case 2: 
+      case 2:
+        blinkLed();
+        state++;
+
         weights[0] = 0; 
         weights[1] = -14; 
         weights[2] = -12; 
@@ -117,16 +133,17 @@ void loop() {
         weights[6] = 16; //16
         weights[7] = 10;
 
-        blinkLed();
-        state++;
-        break;
+        speed = 30;
+        kp = 0.035;
+        break;        
 
       case 4: 
         while(abs(getEncoderCount_left()) < 30){
           analogWrite(LEFT_PWM_PIN, speed); 
           analogWrite(RIGHT_PWM_PIN, speed);
         }
-        kp = 0.03;
+        speed = 40;
+        kp = 0.06;
         state++;
         
         weights[0] = 0; 
@@ -147,20 +164,23 @@ void loop() {
         state++;
         kp = 0.02125;
 
-        
         break;
 
       case 7:
         // speed = 15; 
         // kp = 0.0159375;
+        resetEncoderCount_left();
+        resetEncoderCount_right();
         state++;
         break;
+
+      
       
       case 9: 
         resetEncoderCount_left();
         resetEncoderCount_right();
 
-        while(abs(getEncoderCount_right()) < 100){
+        while(abs(getEncoderCount_right()) < 200){
           analogWrite(RIGHT_PWM_PIN, speed);
         }
 
@@ -186,12 +206,17 @@ void loop() {
         break;
 
       case 8: 
+
+        speed = 30;
+        if(abs(getEncoderCount_right()) < 725){
+          speed = 80;
+        }
         if(currError > 2000){
           state++;
         }    
 
       default: 
-        if(isBlack()){
+        if(elapsed >= 2500 && isBlack()){
           // enterBuffer();
           blinkLed();    
           resetEncoderCount_left();
@@ -271,8 +296,14 @@ bool isBlack() {
   //   }
   // }
   // return count >= 6;
-
-  return normalizedSum >= 6500;
+  if(normalizedSum >= 6750){
+    ECE3_read_IR(sensorValues);
+    if(normalizedSum >= 6750){
+      enterBuffer(); 
+      return true;
+    }
+  }
+  return false;
 }
 
 void enterBuffer() {
