@@ -22,7 +22,7 @@ const int LED_PIN = 58;
 const int YELLOW_LED_PIN = 51;
 const uint8_t NUM_SENSORS = 8;
 
-int8_t weights[NUM_SENSORS] = {0, -14, -12, -8, 8, 12, 14, 0};
+int8_t weights[NUM_SENSORS] = {0 -14, -12, -8, 8, 12, 14, 0};
 float kp = 0.02125;
 const float kd = 0;
 const uint16_t encoderMax = 475;
@@ -37,8 +37,12 @@ uint16_t sensorValues[NUM_SENSORS];
 float normalizedValues[NUM_SENSORS];
 uint8_t speed = 20;
 uint8_t state = 0;
+uint8_t black_count = 0;
+bool isBug = false;
+
 
 float normalizedSum = 0;
+float sum = 0;
 
 uint8_t led_id = 0;
 
@@ -78,108 +82,138 @@ void loop() {
 
   bufferError();
 
-  switch(state){
-    case 1: 
-      digitalWrite(LEFT_DIR_PIN, HIGH);
-      while(abs(getEncoderCount_left()) < encoderMax){
-        analogWrite(LEFT_PWM_PIN, speed); 
-        analogWrite(RIGHT_PWM_PIN, speed);
-      }
-      digitalWrite(LEFT_DIR_PIN, LOW); 
-      blinkLed();
-      state++;
-      break;
+  isBug = false;
+  // if(normalizedSum >=7000){
+  //   ECE3_read_IR(sensorValues); 
+  //   if(normalizedSum >= 7000){
+  //     isBug = false; 
+  //   }else {
+  //     isBug = true;
+  //   }
+  // }
 
-    case 2: 
-      weights[0] = 0; 
-      weights[1] = -14; 
-      weights[2] = -12; 
-      weights[3] = -8; 
-      weights[4] = 10; 
-      weights[5] = 14; 
-      weights[6] = 16; 
-      weights[7] = 0;
-
-      blinkLed();
-      state++;
-      break;
-
-    case 4: 
-      while(abs(getEncoderCount_left()) < 50){
-        analogWrite(LEFT_PWM_PIN, speed); 
-        analogWrite(RIGHT_PWM_PIN, speed);
-      }
-      state++;
-      break;
-
-    case 6: 
-      while(abs(getEncoderCount_left()) < 50){
+  if(!isBug){
+    switch(state){
+      case 1: 
+        speed = 50;
+        digitalWrite(LEFT_DIR_PIN, HIGH);
+        while(abs(getEncoderCount_left()) < encoderMax){
           analogWrite(LEFT_PWM_PIN, speed); 
           analogWrite(RIGHT_PWM_PIN, speed);
-      }
-      state++;
-      break;
-
-    case 7:
-      // speed = 15; 
-      // kp = 0.0159375;
-      state++;
-      break;
-    
-    case 9: 
-      resetEncoderCount_left();
-      resetEncoderCount_right();
-
-      while(abs(getEncoderCount_right()) < 200){
-        analogWrite(RIGHT_PWM_PIN, speed);
-      }
-
-      analogWrite(RIGHT_PWM_PIN, 0);
-
-      digitalWrite(LEFT_DIR_PIN, HIGH);
-      while(abs(getEncoderCount_left()) < 50){
-        analogWrite(LEFT_PWM_PIN, speed);
-      }
-
-      analogWrite(LEFT_PWM_PIN, 0);
-
-      digitalWrite(LEFT_NSLP_PIN, LOW);
-      digitalWrite(RIGHT_NSLP_PIN, LOW); 
-
-      while(!Serial) {
-        ;
-      }
-
-      Serial.println(buffer); 
-      Serial.println("---------------------------------");
-
-      break;
-
-    case 8: 
-      if(currError > 2000){
+        }
+        digitalWrite(LEFT_DIR_PIN, LOW); 
+        blinkLed();
         state++;
-      }    
+        speed = 20;
+        break;
 
-    default: 
-      if(isBlack()){
-        // enterBuffer();
-        blinkLed();    
+      case 2: 
+        weights[0] = 0; 
+        weights[1] = -14; 
+        weights[2] = -12; 
+        weights[3] = -8; 
+        weights[4] = 10; 
+        weights[5] = 14; //14 
+        weights[6] = 16; //16
+        weights[7] = 10;
+
+        blinkLed();
+        state++;
+        break;
+
+      case 4: 
+        while(abs(getEncoderCount_left()) < 30){
+          analogWrite(LEFT_PWM_PIN, speed); 
+          analogWrite(RIGHT_PWM_PIN, speed);
+        }
+        kp = 0.03;
+        state++;
+        
+        weights[0] = 0; 
+        weights[1] = -14; 
+        weights[2] = -12; 
+        weights[3] = -8; 
+        weights[4] = 12; 
+        weights[5] = 14; //14 
+        weights[6] = 16; //16
+        weights[7] = 0;
+        break;
+
+      case 6: 
+        while(abs(getEncoderCount_left()) < 30){
+            analogWrite(LEFT_PWM_PIN, speed); 
+            analogWrite(RIGHT_PWM_PIN, speed);
+        }
+        state++;
+        kp = 0.02125;
+
+        
+        break;
+
+      case 7:
+        // speed = 15; 
+        // kp = 0.0159375;
+        state++;
+        break;
+      
+      case 9: 
         resetEncoderCount_left();
         resetEncoderCount_right();
-        state++;
+
+        while(abs(getEncoderCount_right()) < 100){
+          analogWrite(RIGHT_PWM_PIN, speed);
+        }
+
+        analogWrite(RIGHT_PWM_PIN, 0);
+
+        // digitalWrite(LEFT_DIR_PIN, HIGH);
+        // while(abs(getEncoderCount_left()) < 50){
+        //   analogWrite(LEFT_PWM_PIN, speed);
+        // }
+
+        analogWrite(LEFT_PWM_PIN, 0);
+
+        digitalWrite(LEFT_NSLP_PIN, LOW);
+        digitalWrite(RIGHT_NSLP_PIN, LOW); 
+
+        // while(!Serial) {
+        //   ;
+        // }
+
+        // Serial.println(buffer); 
+        // Serial.println("---------------------------------");
+
+        break;
+
+      case 8: 
+        if(currError > 2000){
+          state++;
+        }    
+
+      default: 
+        if(isBlack()){
+          // enterBuffer();
+          blinkLed();    
+          resetEncoderCount_left();
+          resetEncoderCount_right();
+          state++;
+        }
+        digitalWrite(LEFT_DIR_PIN, LOW); 
+        digitalWrite(RIGHT_DIR_PIN, LOW);
+
+        float PIDSum = kp * currError; 
+        int leftSpeed = speed - PIDSum; 
+        int rightSpeed = speed + PIDSum;
+
+        analogWrite(LEFT_PWM_PIN, leftSpeed);
+        analogWrite(RIGHT_PWM_PIN, rightSpeed); 
+        break;
       }
-      digitalWrite(LEFT_DIR_PIN, LOW); 
-      digitalWrite(RIGHT_DIR_PIN, LOW);
 
-      float PIDSum = kp * currError; 
-      int leftSpeed = speed - PIDSum; 
-      int rightSpeed = speed + PIDSum;
+  
 
-      analogWrite(LEFT_PWM_PIN, leftSpeed);
-      analogWrite(RIGHT_PWM_PIN, rightSpeed); 
-      break;
+    }
   }
-}
 
 void blinkLed() {
   if(led_id % 2 == 0){
@@ -238,7 +272,7 @@ bool isBlack() {
   // }
   // return count >= 6;
 
-  return normalizedSum >= 7000;
+  return normalizedSum >= 6500;
 }
 
 void enterBuffer() {
@@ -254,8 +288,9 @@ void enterBuffer() {
 void calculateError(){
   float error = 0;     
   normalizedSum = 0;                     
+  sum = 0;
   for(uint8_t i = 0; i < NUM_SENSORS; i++){
-
+      sum += sensorValues[i];
       if(sensorValues[i] <= minValues[i]){
         minValues[i] = sensorValues[i];
       }
