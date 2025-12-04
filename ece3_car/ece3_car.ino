@@ -73,7 +73,7 @@ void setup() {
   buffer.reserve(4096);
 
   Serial.begin(9600);
-  delay(1000);
+  delay(2000);
 }
 
 void loop() {
@@ -123,6 +123,7 @@ void loop() {
       case 2:
         blinkLed();
         state++;
+        startTime = 0;
 
         weights[0] = 0; 
         weights[1] = -14; 
@@ -133,8 +134,6 @@ void loop() {
         weights[6] = 16; //16
         weights[7] = 10;
 
-        speed = 30;
-        kp = 0.035;
         break;        
 
       case 4: 
@@ -142,8 +141,8 @@ void loop() {
           analogWrite(LEFT_PWM_PIN, speed); 
           analogWrite(RIGHT_PWM_PIN, speed);
         }
-        speed = 40;
-        kp = 0.06;
+        speed = 20;
+        kp = 0.03;
         state++;
         
         weights[0] = 0; 
@@ -207,8 +206,8 @@ void loop() {
 
       case 8: 
 
-        speed = 30;
-        if(abs(getEncoderCount_right()) < 725){
+        speed = 20;
+        if(abs(getEncoderCount_right()) > 100 && abs(getEncoderCount_right()) < 725){
           speed = 80;
         }
         if(currError > 2000){
@@ -216,7 +215,7 @@ void loop() {
         }    
 
       default: 
-        if(elapsed >= 2500 && isBlack()){
+        if((elapsed >= 3000 || state >= 3) && isBlack()){
           // enterBuffer();
           blinkLed();    
           resetEncoderCount_left();
